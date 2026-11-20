@@ -186,3 +186,7 @@ Use the demo for mathematical experimentation only. Before real authentication d
 ## License
 
 Topo-Auth is distributed under the **GNU Affero General Public License, version 3.0 (AGPL-3.0)**. See [`LICENSE`](LICENSE) for the complete terms.
+
+## citation
+
+Chutiphong. (2026). synthesis496/topo-auth: Topo auth (Version v1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.24391289
