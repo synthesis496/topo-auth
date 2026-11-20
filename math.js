@@ -17,7 +17,7 @@ export const windingNumber = (pts) => {
 };
 
 export const extractInvariants = (strokes) => {
-  const allPoints = strokes.reduce((acc, s) => acc.concat(s), []);
+  const allPoints = strokes.reduce((acc, s) => acc.concat(s.points), []);
   return {
     length: pathLength(allPoints) || 1,
     winding: windingNumber(allPoints),
@@ -26,15 +26,11 @@ export const extractInvariants = (strokes) => {
   };
 };
 
-export const fibTime = (n) =>
-  Array.from({ length: n }).reduce((acc, _, i) => 
-    acc.concat(i < 2 ? i + 1 : acc[i - 1] + acc[i - 2]), []);
-
-export const mirrorPoint = (p, c = 1) => ({
-  ...p,
-  x: c - (-p.x),
-  y: c - (-p.y)
+export const applyMirror = (stroke, canvasWidth) => ({
+  ...stroke,
+  points: stroke.points.map(p => ({ ...p, x: canvasWidth - p.x }))
 });
 
-export const applyMirror = (stroke, c = 1) =>
-  stroke.map(p => mirrorPoint(p, c));
+export const getFibTime = (n) =>
+  Array.from({ length: n }).reduce((acc, _, i) => 
+    acc.concat(i < 2 ? i + 1 : acc[i - 1] + acc[i - 2]), []) || [1, 1, 2, 3, 5];
