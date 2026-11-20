@@ -23,13 +23,22 @@ const resetFibNodes = () => {
     });
 };
 
+const getCoords = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (e.clientX - rect.left) * (canvas.width / rect.width),
+        y: (e.clientY - rect.top) * (canvas.height / rect.height),
+        t: performance.now()
+    };
+};
+
 const draw = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     ctx.shadowBlur = 15;
     ctx.shadowColor = challengeActive && challenge.type === 'MIRROR' ? '#f0f' : '#0ff';
     ctx.strokeStyle = challengeActive && challenge.type === 'MIRROR' ? '#f0f' : '#0ff';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -50,20 +59,20 @@ const draw = () => {
 const processTiming = (index, duration) => {
     const target = challenge.fibTarget[index];
     const diff = Math.abs(target - duration);
-    const isPass = diff < 400;
+    const isPass = diff < 500;
     
-    fibNodes[index].textContent = target / 1000;
+    fibNodes[index].textContent = (target / 1000).toFixed(1);
     fibNodes[index].className = `fib-node ${isPass ? 'success' : 'fail'}`;
-    return isPass ? 1 : Math.max(0, 1 - (diff / 1000));
+    return isPass ? 1 : Math.max(0, 1 - (diff / 1500));
 };
 
 canvas.addEventListener('pointerdown', (e) => {
-    currentStroke = { points: [{ x: e.offsetX, y: e.offsetY, t: performance.now() }] };
+    currentStroke = { points: [getCoords(e)] };
     draw();
 });
 
 canvas.addEventListener('pointermove', (e) => {
-    currentStroke && currentStroke.points.push({ x: e.offsetX, y: e.offsetY, t: performance.now() });
+    currentStroke && currentStroke.points.push(getCoords(e));
     currentStroke && draw();
 });
 
@@ -71,6 +80,8 @@ canvas.addEventListener('pointerup', () => {
     currentStroke && strokes.push(currentStroke);
     currentStroke = null;
     draw();
+    
+    challengeActive && strokes.length === challenge.fibTarget.length && log("All strokes drawn. Press VERIFY to evaluate.");
 });
 
 document.getElementById('btn-register').addEventListener('click', () => {
@@ -88,8 +99,10 @@ document.getElementById('btn-verify').addEventListener('click', () => {
         strokes = [];
         resetFibNodes();
         draw();
-        log(`CHALLENGE: ${challenge.type} | Draw ${challenge.fibTarget.length} strokes with Fibonacci timing.`, true);
+        log(`CHALLENGE: ${challenge.type} | Draw ${challenge.fibTarget.length} strokes. Watch the clock!`, true);
     })();
+
+    !template && log("ERROR: Please Register a template first.", true);
 
     challengeActive && strokes.length === challenge.fibTarget.length && (() => {
         const timeScores = strokes.map((s, i) => {
@@ -108,6 +121,8 @@ document.getElementById('btn-verify').addEventListener('click', () => {
 
         challengeActive = false;
         strokes = [];
-        setTimeout(draw, 1000);
+        setTimeout(draw, 1500);
     })();
+
+    challengeActive && strokes.length !== challenge.fibTarget.length && log(`Waiting for ${challenge.fibTarget.length - strokes.length} more stroke(s)...`);
 });
