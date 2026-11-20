@@ -3,26 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topo-Auth Demo</title>
+    <title>Topo-Auth | Quantum HUD</title>
     <style>
-        body { font-family: system-ui, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        canvas { background: #222; border: 2px solid #444; border-radius: 8px; touch-action: none; cursor: crosshair; width: 100%; max-width: 500px; aspect-ratio: 1; }
-        .controls { margin-top: 20px; display: flex; gap: 10px; }
-        button { padding: 10px 20px; font-size: 16px; border: none; border-radius: 4px; cursor: pointer; background: #3498db; color: white; font-weight: bold; }
-        button:hover { background: #2980b9; }
-        #btn-verify { background: #2ecc71; }
-        #btn-verify:hover { background: #27ae60; }
-        #output { margin-top: 20px; font-family: monospace; font-size: 14px; text-align: center; min-height: 40px; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        * { box-sizing: border-box; }
+        body { font-family: 'Orbitron', sans-serif; background: #020202; color: #0ff; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; min-height: 100vh; overflow: hidden; }
+        h1 { font-size: 1.8rem; letter-spacing: 4px; text-shadow: 0 0 15px #0ff; margin: 0 0 5px 0; text-transform: uppercase; text-align: center; }
+        .subtitle { color: #555; font-size: 0.7rem; margin-bottom: 15px; letter-spacing: 2px; }
+        
+        .hud-layout { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; max-width: 900px; }
+        @media (min-width: 768px) { .hud-layout { grid-template-columns: 1fr 1fr; } }
+
+        .canvas-container { position: relative; width: 100%; aspect-ratio: 1; border: 1px solid #0ff; border-radius: 8px; box-shadow: 0 0 30px rgba(0,255,255,0.2), inset 0 0 20px rgba(0,255,255,0.1); background: radial-gradient(circle, #001a1a 0%, #000 100%); overflow: hidden; }
+        canvas { touch-action: none; cursor: crosshair; width: 100%; height: 100%; position: relative; z-index: 2; }
+        
+        .radar { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0.3; background: conic-gradient(from 0deg, transparent 0deg, #0ff 360deg); border-radius: 50%; animation: spin 4s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .panel { background: rgba(0, 20, 20, 0.8); border: 1px solid #0ff; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,255,255,0.1); }
+        .panel h3 { margin: 0 0 15px 0; font-size: 1rem; border-bottom: 1px solid #033; padding-bottom: 10px; }
+        
+        .fib-clock { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .fib-node { width: 40px; height: 40px; border: 2px solid #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; color: #555; transition: all 0.3s; }
+        .fib-node.active { border-color: #f0f; color: #f0f; box-shadow: 0 0 15px #f0f; animation: pulse 1s infinite; }
+        .fib-node.success { border-color: #0f0; color: #0f0; box-shadow: 0 0 15px #0f0; }
+        .fib-node.fail { border-color: #f00; color: #f00; box-shadow: 0 0 15px #f00; }
+
+        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        button { flex: 1; padding: 15px; font-family: inherit; font-size: 0.9rem; font-weight: bold; border: 1px solid transparent; border-radius: 4px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; background: transparent; }
+        #btn-register { border-color: #f0f; color: #f0f; }
+        #btn-register:hover { background: #f0f; color: #000; box-shadow: 0 0 20px #f0f; }
+        #btn-verify { border-color: #0f0; color: #0f0; }
+        #btn-verify:hover { background: #0f0; color: #000; box-shadow: 0 0 20px #0f0; }
+
+        .terminal { margin-top: 15px; flex: 1; background: #000; border: 1px solid #033; padding: 15px; font-size: 12px; color: #0f0; overflow-y: auto; font-family: monospace; line-height: 1.5; }
+        .alert { color: #f0f; font-weight: bold; animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
-    <h2>Topo-Auth Protocol</h2>
-    <canvas id="pad" width="500" height="500"></canvas>
-    <div class="controls">
-        <button id="btn-register">Register Template</button>
-        <button id="btn-verify">Verify Gesture</button>
+    <h1>Topo-Auth</h1>
+    <div class="subtitle">STRUCTURAL ABSENCE PROTOCOL // v2.0</div>
+    
+    <div class="hud-layout">
+        <div class="canvas-container">
+            <div class="radar"></div>
+            <canvas id="pad" width="600" height="600"></canvas>
+        </div>
+
+        <div class="panel">
+            <h3>[ FIBONACCI TIMING CLOCK ]</h3>
+            <div class="fib-clock" id="fib-clock">
+                <div class="fib-node">1</div>
+                <div class="fib-node">1</div>
+                <div class="fib-node">2</div>
+            </div>
+            <div class="terminal" id="output">> Awaiting registration...</div>
+            <div class="controls">
+                <button id="btn-register">Register</button>
+                <button id="btn-verify">Verify</button>
+            </div>
+        </div>
     </div>
-    <div id="output">Draw a gesture to begin...</div>
     <script type="module" src="app.js"></script>
 </body>
 </html>
