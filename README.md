@@ -1,141 +1,188 @@
-# topo-auth
+# Topo-Auth
 
-> **“Errors are not corrected. They are structurally absent.”**  
-> *A design principle for expressing authentication as a mathematical relation—not a claim that this prototype already provides cryptographic identity assurance.*
+## Structural Absence Protocol
 
-`topo-auth` is an experimental JavaScript prototype exploring gesture-derived geometric features and a tolerance-based comparison. Its current implementation contains three small modules: point-path calculations and transformations in `math.js`, template construction and scoring in `protocol.js`, and an initially empty `Types` export in `types.js`.
+Topo-Auth is an experimental passwordless authentication concept built around geometric and topological gesture features. The project explores whether a gesture can be compared through compact mathematical invariants instead of retaining raw recordings or password-style credentials.
 
-This README documents the behavior present in the repository. In particular, the current code does **not** implement a complete passwordless authentication service, a zero-knowledge proof, persistent server-side templates, challenge-response orchestration, or anti-replay controls. The mathematical concepts below describe the implemented functions and their limitations, not audited security guarantees.
+> **Core principle:** Imposters are not blocked through escalating `if-else` statements; they are structurally absent from the accepted mathematical relation.
 
-## Core Philosophy
+**Live demo:** [https://synthesis496.github.io/topo-auth/](https://synthesis496.github.io/topo-auth/)
 
-The project's guiding idea is to define responses in terms of measurable geometric properties rather than store a recording of a gesture. In the current prototype, those properties are a path length, an estimated winding value, a stroke count, and a time-field sum. `protocol.js` compares an expected invariant object with an actual one using a normalized, capped distance.
+## How to Play — Live Demo
 
-“Structural absence” is a motivating design metaphor: an implementation can define acceptance as satisfying a relation over features. It does not mean that imposters are mathematically impossible, nor does avoiding ordinary `if` statements make a verifier secure. The current code still uses JavaScript control flow for empty-key handling and fallback values, and `Math.sign()` is used only for the final strict threshold comparison.
+1. Click **Register** and draw any shape to generate a mathematical template.
+2. Click **Verify** to receive a randomized challenge.
+3. The system requests either a **NORMAL** or **MIRROR** gesture.
+4. Draw exactly **3 strokes** while matching the Fibonacci Timing Clock shown in the HUD:
+   - Stroke 1: **1 second**
+   - Stroke 2: **1 second**
+   - Stroke 3: **2 seconds**
+5. Click **Verify** again to view the resulting score. Failure in timing or geometry produces:
 
-The gesture verbs **spin, knead, reflect, throw, catch, verify** are not implemented as protocol stages in the present source. They may serve as a vocabulary for future challenge and response work; this README does not attribute those behaviors to the code.
+> **STRUCTURALLY ABSENT**
 
 ## Mathematical Foundation
 
-### Path length
+### Gesture Representation
 
-For a sequence of points \(p_i=(x_i,y_i)\), `pathLength` sums Euclidean distances between adjacent points:
+A gesture is modeled as a path:
 
 \[
-L(P)=\sum_{i=1}^{N-1}\sqrt{(x_i-x_{i-1})^2+(y_i-y_{i-1})^2}.
+S:[0,1]\rightarrow\mathbb{R}^{2}.
 \]
 
-The implementation returns \(0\) for a path with no segments. `extractInvariants` substitutes \(1\) when the resulting length is falsy.
+Instead of comparing raw pixel coordinates, the protocol compares derived path properties.
 
-### Winding estimate
+### Path Length
 
-`windingNumber` computes the direction angle of successive segments, wraps each angle difference to \([-\pi,\pi]\), sums those differences, and rounds the total number of turns:
+For a sequence of points \(S_i=(x_i,y_i)\), path length is approximated by:
 
 \[
-\Delta_i = \operatorname{atan2}\!\left(\sin(\alpha_i-\alpha_{i-1}),
-                                      \cos(\alpha_i-\alpha_{i-1})\right),
-\qquad
-\widehat{W}(P)=\operatorname{round}\!\left(\frac{\sum_i\Delta_i}{2\pi}\right).
+L(S)=\sum_{i=1}^{n-1}
+\sqrt{(x_{i+1}-x_i)^2+(y_{i+1}-y_i)^2}.
 \]
 
-This is a discrete turning-angle estimate, not a general robust topological invariant extractor. The input is not checked for closure, degeneracy, sampling quality, or noise. `extractInvariants` concatenates all strokes before computing path length and winding, so the current implementation also treats the last point of one stroke and the first point of the next as adjacent.
+Path length captures traversal magnitude while reducing sensitivity to absolute display position.
 
-### Extracted feature object
+### Winding Number
 
-For the supplied array of strokes, `extractInvariants` returns an object with these keys:
+The winding number describes how many times a closed path circulates around a reference point \(p\):
 
 \[
-\mathbf{I} = (L,\widehat{W},N_s,T_s),
+W(S,p)=\frac{1}{2\pi}\oint_S d\arg(z-p).
 \]
 
-where \(L\) is the concatenated path length, \(\widehat{W}\) is the winding estimate, \(N_s\) is the number of strokes, and
+For discrete angular segments \(\alpha_i\), an estimate can be calculated as:
 
 \[
-T_s = \sum_{p\in P}p.t
+\widehat{W}(S)=\operatorname{round}\!
+\left(
+\frac{\sum_i\Delta_i}{2\pi}
+\right).
 \]
 
-is the sum of each point's `t` field. Despite the property name `duration`, this is not calculated as elapsed time (such as last timestamp minus first timestamp). The code substitutes \(1\) for a zero/falsy length, stroke count, or time sum. It assumes points have numeric `x`, `y`, and `t` values and does not validate them.
-
-### Fibonacci sequence helper
-
-`fibTime(n)` returns the first \(n\) Fibonacci-like values beginning \(1,1\):
+where:
 
 \[
-F_1=1,\quad F_2=1,\quad F_n=F_{n-1}+F_{n-2}.
+\Delta_i=\operatorname{atan2}\!
+\left(
+\sin(\alpha_i-\alpha_{i-1}),
+\cos(\alpha_i-\alpha_{i-1})
+\right).
 \]
 
-It returns an array of numbers only. It does not schedule events, measure time, generate challenges, or provide replay protection. The impulse-train expression
+The extracted feature vector can therefore be represented as:
 
 \[
-T_{\mathrm{Fib}}(t)=\sum_n\delta(t-F_nT_0)
+I(S)=\left(L(S),W(S,p),N_s,T_s\right),
 \]
 
-is a possible theoretical direction, but is **not implemented** by this helper.
+where \(N_s\) is the stroke count and \(T_s\) is a timing-related feature.
 
-### Point transformation
+### Mirror Operator
 
-`mirrorPoint(p,c)` currently returns coordinates
+Shoulder-surfing resistance is based on a challenge-dependent transformation:
 
 \[
-x'=c+x,\qquad y'=c+y,
+M S(x)=C-S(-x).
 \]
 
-and copies the other properties of \(p\). This follows directly from the implementation expressions `c - (-p.x)` and `c - (-p.y)`. It is a translation, not a reflection, and is not the proposed operator \(\mathcal{M}S(x)=C-S(-x)\). `applyMirror` maps this point transformation over a stroke. The function names should not be interpreted as evidence of a mirror challenge-response protocol.
+Here:
 
-### Template tolerance and score
+- \(S(x)\) is the original gesture trajectory.
+- \(S(-x)\) applies spatial reflection.
+- \(C\) is a centering or translation constant.
+- \(MS(x)\) is the challenge-oriented transformed gesture.
 
-`buildTemplate` retains the supplied `invariants` object and creates a per-key tolerance
-
-\[
-\tau_k=\max(0.15I_k,0.1).
-\]
-
-For each key in the template, `calculateScore` takes the corresponding actual value (defaulting a missing or nullish value to \(0\)), uses tolerance \(\tau_k\) (defaulting to \(1\) if absent), caps the normalized absolute difference at \(1\), and averages across keys:
+The active challenge is therefore selected according to:
 
 \[
-S(E,A)=
-\begin{cases}
-\displaystyle\frac{1}{K}\sum_{k=1}^{K}
-\min\!\left(\frac{|E_k-A_k|}{\tau_k},1\right), & K>0,\\[6pt]
-1, & K=0.
+S'=\begin{cases}
+S,&\text{NORMAL},\\
+MS,&\text{MIRROR}.
 \end{cases}
 \]
 
-`isAuthentic(score, threshold = 0.35)` returns `true` exactly when
+> **Implementation note:** The current point utility is a translation based on `c - (-p.x)` and `c - (-p.y)`. Full challenge-response mirror verification is not yet implemented.
+
+### Fibonacci Timing
+
+Anti-replay behavior is represented by a Fibonacci-derived three-phase clock:
 
 \[
-\operatorname{Math.sign}(\theta-S)>0,
+T_{\mathrm{Fib}}=(1\,\mathrm{s},1\,\mathrm{s},2\,\mathrm{s}).
 \]
 
-which means the comparison is **strict**: a score equal to the threshold is not accepted. The score is a prototype similarity measure, not a calibrated probability or a security-grade authentication decision.
+The total execution window is:
 
-## Architecture & Security Model
+\[
+T_{\Sigma}=1+1+2=4\,\mathrm{s}.
+\]
 
-### Modules as implemented
+Observed and expected stroke intervals can be normalized as:
 
-| File | Current behavior |
-| --- | --- |
-| `types.js` | Exports an empty object: `Types = {}`. No data types or schemas are currently defined. |
-| `math.js` | Exports `TAU`, `PHI`, `pathLength`, `windingNumber`, `extractInvariants`, `fibTime`, `mirrorPoint`, and `applyMirror`. `PHI` is defined but not used by the other functions in this module. |
-| `protocol.js` | Exports `buildTemplate`, `calculateScore`, and `isAuthentic`. It performs in-memory object construction, numeric scoring, and a threshold comparison; it does not persist data or communicate with a server. |
+\[
+\tau_i=\frac{\Delta t_i-t_i}{t_i}.
+\]
 
-### Data and trust boundaries
+> **Implementation note:** The repository currently provides a Fibonacci sequence helper, `fibTime(n)`. It does not yet schedule challenges or enforce real three-stroke timing and replay resistance.
 
-The repository currently defines no network service, database, sensor capture, enrollment workflow, storage format, cryptographic protocol, or transport-security configuration. Consequently, it does not establish that a server stores less than 1 KB, stores no raw data, or renders breached data useless. Those properties depend on systems and implementation code that are not present here.
+## Security Architecture — Why It Is Different
 
-Likewise, storing extracted features instead of raw gesture media would be data minimization, but would not by itself constitute zero-knowledge. A formal zero-knowledge claim requires a defined cryptographic statement and protocol, stated assumptions, and an appropriate security proof. No such protocol or proof is included in this repository.
+### Zero-Knowledge-Oriented Design
 
-### Security interpretation and limitations
+The intended design retains mathematical invariants instead of raw biometric images or gesture recordings. A compact template may contain fewer than 1 KB of extracted feature data.
 
-- **No complete authentication protocol:** the current functions are local utilities and scoring primitives. They do not authenticate an account or establish a user's identity.
-- **No anti-replay implementation:** `fibTime` computes sequence values but does not create unpredictable, single-use challenges, validate freshness, track used responses, or enforce expiration.
-- **No mirror challenge-response:** the point transform is a translation, and no challenge issuance or response verification flow exists.
-- **No validated biometric or behavioral security:** gesture features can be noisy, observable, reproducible, or imitable. The code includes no threat model, liveness detection, accessibility analysis, or false-accept/false-reject evaluation.
-- **No input hardening:** empty arrays, malformed points, non-finite numbers, negative feature values, and inconsistent template objects are not comprehensively validated. The default tolerances and threshold are illustrative implementation constants, not empirically calibrated values.
-- **No “zero branching” guarantee:** `Math.sign()` implements a final comparison expression, but JavaScript code still contains branches and fallback behavior. Coding style does not establish constant-time execution or security.
+However, this prototype **does not implement a formal zero-knowledge protocol**. Extracted features are not cryptographic proofs, and storing invariants alone is not sufficient to establish zero-knowledge security.
 
-The prototype is best treated as a starting point for mathematical experimentation. Before any real authentication use, it would need a precise threat model, validated feature definitions, robust input handling, a cryptographically sound freshness mechanism, secure enrollment and recovery, privacy analysis, empirical threshold evaluation, and independent security review.
+### Algebraic Decision Model
+
+The protocol is designed to express acceptance as a relationship over feature distance:
+
+\[
+V=\operatorname{sign}\left(\varepsilon-I_{\Delta}\right),
+\]
+
+where:
+
+\[
+I_{\Delta}=\left\|I(S_{\mathrm{observed}})-I(S_{\mathrm{template}})\right\|.
+\]
+
+The implementation uses the sign operation:
+
+```javascript
+Math.sign(threshold - score)
+```
+
+rather than building authentication decisions solely through nested `if-else` statements.
+
+This is a **design philosophy**, not a security guarantee. JavaScript still requires branches and fallback logic, and the full application must include secure challenge generation, transport, storage, rate limiting, and threat modeling.
+
+## Repository Status and Limitations
+
+Topo-Auth is an experimental JavaScript prototype. The current repository provides local mathematical utilities for:
+
+- Path-length calculation
+- Discrete winding estimation
+- Invariant extraction
+- Fibonacci sequence generation
+- Template tolerance construction
+- Numeric score calculation
+- Threshold comparison
+
+It does not currently provide:
+
+- A production authentication service
+- Persistent credential storage
+- Cryptographic enrollment or verification
+- Anti-replay challenge issuance
+- A complete mirror challenge-response flow
+- A formal zero-knowledge proof
+- Liveness, sensor integrity, or calibrated biometric guarantees
+
+Use the demo for mathematical experimentation only. Before real authentication deployment, the system requires a formal threat model, validated feature engineering, cryptographic protocol design, secure storage, and independent security review.
 
 ## License
 
-This project is distributed under the **GNU Affero General Public License, version 3.0 (AGPL-3.0)**. See [`LICENSE`](LICENSE) for the complete terms.
+Topo-Auth is distributed under the **GNU Affero General Public License, version 3.0 (AGPL-3.0)**. See [`LICENSE`](LICENSE) for the complete terms.
